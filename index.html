@@ -1,0 +1,1719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geometry Proof Whiteboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #1e1e1e; color: #fff; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        #toolbar {
+            position: absolute; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(30, 30, 35, 0.85); padding: 10px 14px; border-radius: 16px;
+            display: flex; gap: 12px; z-index: 10;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(74, 144, 226, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            align-items: center;
+        }
+        button {
+            background: rgba(255, 255, 255, 0.03); color: #e0e0e0; border: 1px solid transparent;
+            padding: 10px 20px; border-radius: 10px; cursor: pointer; transition: all 0.2s ease;
+            display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 500; font-size: 14px;
+            white-space: nowrap; flex-shrink: 0; min-width: max-content;
+        }
+        button:hover { 
+            background: rgba(255, 255, 255, 0.1); 
+            border-color: rgba(255, 255, 255, 0.2); 
+            transform: translateY(-1px); 
+        }
+        button.active { 
+            background: rgba(74, 144, 226, 0.2); 
+            color: #64B5F6; 
+            border-color: rgba(74, 144, 226, 0.4); 
+            box-shadow: 0 0 10px rgba(74, 144, 226, 0.2); 
+        }
+        button i { font-size: 15px; }
+        .toolbar-divider { width: 1px; height: 24px; background: rgba(255, 255, 255, 0.15); margin: 0; align-self: center; flex-shrink: 0; }
+
+        .tool-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            max-width: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: max-width 0.4s ease, opacity 0.3s ease;
+            padding: 0;
+            margin-left: 0;
+        }
+        .tool-group.show {
+            max-width: 300px;
+            opacity: 1;
+        }
+
+        .color-picker-circle {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            border: none;
+            border-radius: 50%;
+            background: transparent;
+            cursor: pointer;
+            overflow: hidden;
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2);
+            flex-shrink: 0;
+        }
+        .color-picker-circle::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        .color-picker-circle::-webkit-color-swatch {
+            border: none;
+            border-radius: 50%;
+        }
+        .color-picker-circle::-moz-color-swatch {
+            border: none;
+            border-radius: 50%;
+        }
+
+        .custom-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100px;
+            background: transparent;
+            outline: none;
+            flex-shrink: 0;
+        }
+        .custom-slider::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .custom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4a90e2;
+            cursor: pointer;
+            margin-top: -6px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            border: 2px solid #fff;
+            transition: transform 0.1s;
+        }
+        .custom-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+        .custom-slider::-moz-range-track {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .custom-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #4a90e2;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            border: 2px solid #fff;
+            transition: transform 0.1s;
+        }
+        .custom-slider::-moz-range-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        #canvas-container { position: relative; width: 100vw; height: 100vh; }
+        canvas { display: block; }
+        
+        #tooltip {
+            position: absolute; display: none; background: #333; padding: 5px;
+            border-radius: 4px; z-index: 20; border: 1px solid #555; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        #tooltip button { padding: 4px 8px; font-size: 12px; }
+        
+        #text-input {
+            position: absolute; display: none; z-index: 100;
+            background: rgba(0, 0, 0, 0.7); color: #fff; border: 1px dashed #4a90e2;
+            padding: 5px; outline: none; resize: none; overflow: hidden;
+            font-family: sans-serif; line-height: 1.2;
+            transform: translate(-50%, -50%); 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            border-radius: 4px; white-space: pre;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toolbar">
+        <button id="btn-select" class="active" title="Select/Move (V)"><i class="fas fa-mouse-pointer"></i> Select</button>
+        <div class="toolbar-divider"></div>
+        <button id="btn-text" title="Add Text (X)"><i class="fas fa-font"></i> Text</button>
+        <div class="toolbar-divider"></div>
+        <button id="btn-square" title="Add Square (S)"><i class="far fa-square"></i> Square</button>
+        <button id="btn-circle" title="Add Circle (C)"><i class="far fa-circle"></i> Circle</button>
+        <button id="btn-triangle" title="Add Right Triangle (T)"><i class="fas fa-caret-up"></i> Triangle</button>
+        <button id="btn-quad" title="Add Custom Quadrilateral (Q)"><i class="fas fa-draw-polygon"></i> Quad</button>
+        <div class="toolbar-divider"></div>
+        <button id="btn-line-cut" title="Cut Tool (K)"><i class="fas fa-cut"></i> Cut</button>
+        <div class="toolbar-divider"></div>
+        <button id="btn-flip-h" title="Flip Horizontal (H)"><i class="fas fa-arrows-alt-h"></i> Flip H</button>
+        <button id="btn-flip-v" title="Flip Vertical (V)"><i class="fas fa-arrows-alt-v"></i> Flip V</button>
+
+        <div id="shape-tools" class="tool-group">
+            <div class="toolbar-divider"></div>
+            <input type="color" id="shape-color" class="color-picker-circle" value="#ffffff" title="Shape Color">
+            <input type="range" id="shape-alpha" class="custom-slider" min="0" max="1" step="0.05" value="0.5" title="Transparency">
+        </div>
+
+        <div id="text-tools" class="tool-group">
+            <div class="toolbar-divider"></div>
+            <input type="color" id="text-color" class="color-picker-circle" value="#ffffff" title="Text Color">
+            <input type="range" id="text-size" class="custom-slider" min="10" max="100" step="1" value="20" title="Text Size">
+        </div>
+    </div>
+
+    <div id="tooltip">
+        <button id="btn-confirm-cut">Cut Here</button>
+    </div>
+    
+    <textarea id="text-input" spellcheck="false" wrap="off"></textarea>
+
+    <div id="canvas-container">
+        <canvas id="workspace"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('workspace');
+        const ctx = canvas.getContext('2d');
+        const container = document.getElementById('canvas-container');
+        const textInput = document.getElementById('text-input');
+        
+        let shapes = [];
+        let selectedShapes = [];
+        let clipboard = [];
+        let history = []; 
+        
+        let mode = 'select';
+        
+        let cameraX = 0;
+        let cameraY = 0;
+        let zoom = 1;
+        let isPanning = false;
+        let panStart = {x: 0, y: 0};
+        
+        let isDragging = false;
+        let isBoxSelecting = false;
+        let isRotating = false;
+        let isRotatingGroup = false;
+        let groupInitialCenter = {x: 0, y: 0};
+        let groupInitialAngle = 0;
+        let isResizing = false;
+        let isCenterResizing = false;
+        let resizeVertexIndex = -1;
+        let dragStart = {x: 0, y: 0};
+        let selectionBox = null; 
+        let hasSavedStateForCurrentAction = false;
+        
+        let cutStart = null;
+        let cutEnd = null;
+        let isDrawingCut = false;
+        
+        let activeTextBox = null;
+
+        const colors = ['#E57373', '#81C784', '#64B5F6', '#FFD54F', '#BA68C8', '#4DB6AC', '#FF8A65'];
+
+        function parseHexColor(hex) {
+            if (!hex || typeof hex !== 'string' || !hex.startsWith('#')) return { r: 255, g: 255, b: 255 };
+            let h = hex.slice(1);
+            if (h.length === 3) h = h.split('').map(c => c + c).join('');
+            let num = parseInt(h, 16);
+            if (isNaN(num)) return { r: 255, g: 255, b: 255 };
+            return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+        }
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            draw();
+        }
+        window.addEventListener('resize', resizeCanvas);
+        
+        function toWorld(x, y) {
+            return { x: (x - cameraX) / zoom, y: (y - cameraY) / zoom };
+        }
+        function toScreen(x, y) {
+            return { x: x * zoom + cameraX, y: y * zoom + cameraY };
+        }
+
+        function saveState() {
+            if (history.length > 50) history.shift();
+            history.push({
+                shapes: shapes.map(s => s.snapshot())
+            });
+        }
+        
+        function undo() {
+            if (history.length > 0) {
+                let state = history.pop();
+                shapes = state.shapes.map(s => s.snapshot());
+                selectedShapes = [];
+                draw();
+            }
+        }
+
+        function rotatePoint(cx, cy, x, y, angle) {
+            let radians = (Math.PI / 180) * angle;
+            let cos = Math.cos(radians);
+            let sin = Math.sin(radians);
+            let nx = (cos * (x - cx)) - (sin * (y - cy)) + cx;
+            let ny = (sin * (x - cx)) + (cos * (y - cy)) + cy;
+            return {x: nx, y: ny};
+        }
+
+        function getCenter(vertices) {
+            let cx = 0, cy = 0;
+            for (let v of vertices) { cx += v.x; cy += v.y; }
+            return { x: cx / vertices.length, y: cy / vertices.length };
+        }
+        
+        function getGroupCenter(groupShapes) {
+            let cx = 0, cy = 0, total = 0;
+            groupShapes.forEach(s => {
+                let c = s.type === 'circle' ? { x: s.x, y: s.y } : getCenter(s.getWorldVertices());
+                cx += c.x; cy += c.y; total++;
+            });
+            return { x: cx / total, y: cy / total };
+        }
+        
+        function getGroupRotationHandle() {
+            if (selectedShapes.length < 2) return null;
+            let minTop = Infinity;
+            selectedShapes.forEach(s => {
+                if (s.type === 'circle') {
+                    minTop = Math.min(minTop, s.y - s.radius);
+                } else {
+                    s.getWorldVertices().forEach(v => minTop = Math.min(minTop, v.y));
+                }
+            });
+            let center = getGroupCenter(selectedShapes);
+            return { x: center.x, y: minTop - 40 / zoom };
+        }
+        
+        function dist(p1, p2) {
+            return Math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2);
+        }
+
+        function getClosestVertex(x, y, threshold) {
+            let closest = null;
+            let minDist = threshold;
+            for (let shape of shapes) {
+                if(shape.isText || shape.type === 'circle') continue;
+                for (let v of shape.getWorldVertices()) {
+                    let d = dist({x, y}, v);
+                    if (d < minDist) {
+                        minDist = d;
+                        closest = v;
+                    }
+                }
+            }
+            return closest;
+        }
+
+        class Shape {
+            constructor(x, y, color) {
+                this.x = x; 
+                this.y = y;
+                this.angle = 0;
+                this.baseColor = color || colors[Math.floor(Math.random() * colors.length)];
+                this.alpha = 1.0;
+                this.updateColor();
+                this.id = Math.random().toString(36).substr(2, 9);
+                this.vertices = []; 
+                this.isFlippedH = false;
+                this.isFlippedV = false;
+                this.isText = false;
+            }
+
+            updateColor() {
+                let { r, g, b } = parseHexColor(this.baseColor);
+                this.color = `rgba(${r}, ${g}, ${b}, ${this.alpha})`;
+            }
+
+            getWorldVertices() {
+                let worldVerts = [];
+                for (let v of this.vertices) {
+                    let vx = v.x;
+                    let vy = v.y;
+                    if (this.isFlippedH) vx *= -1;
+                    if (this.isFlippedV) vy *= -1;
+                    
+                    let p = rotatePoint(0, 0, vx, vy, this.angle);
+                    worldVerts.push({ x: this.x + p.x, y: this.y + p.y });
+                }
+                return worldVerts;
+            }
+
+            draw(ctx, isSelected) {
+                let verts = this.getWorldVertices();
+                if (verts.length < 3) return;
+
+                ctx.beginPath();
+                ctx.moveTo(verts[0].x, verts[0].y);
+                for (let i = 1; i < verts.length; i++) {
+                    ctx.lineTo(verts[i].x, verts[i].y);
+                }
+                ctx.closePath();
+                
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                
+                ctx.strokeStyle = isSelected ? '#fff' : 'rgba(255, 255, 255, 0.6)';
+                ctx.lineWidth = (isSelected ? 3 : 1.5) / zoom;
+                ctx.stroke();
+
+                if (isSelected && selectedShapes.length === 1) {
+                    this.drawHandles(ctx, verts);
+                } else if (isSelected) {
+                    this.drawVertexHandles(ctx, verts);
+                }
+            }
+            
+            drawHandles(ctx, verts) {
+                let localTop = Math.min(...this.vertices.map(v => v.y));
+                
+                let baseLocalX = 0;
+                let baseLocalY = (this.type === 'quad') ? 0 : localTop;
+                let handleLocalY = baseLocalY - 40 / zoom;
+                
+                let handleWorld = rotatePoint(0, 0, baseLocalX, handleLocalY, this.angle);
+                let rotX = this.x + handleWorld.x;
+                let rotY = this.y + handleWorld.y;
+                
+                let baseWorld = rotatePoint(0, 0, baseLocalX, baseLocalY, this.angle);
+                
+                ctx.beginPath();
+                ctx.moveTo(this.x + baseWorld.x, this.y + baseWorld.y);
+                ctx.lineTo(rotX, rotY);
+                ctx.strokeStyle = '#aaa';
+                ctx.lineWidth = 1 / zoom;
+                ctx.setLineDash([5 / zoom, 5 / zoom]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                ctx.beginPath();
+                ctx.arc(rotX, rotY, 6 / zoom, 0, Math.PI * 2);
+                ctx.fillStyle = '#4a90e2';
+                ctx.fill();
+                ctx.stroke();
+
+                this.drawVertexHandles(ctx, verts);
+                
+                if (this.type === 'quad') {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 8 / zoom, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffeb3b';
+                    ctx.fill();
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 1 / zoom;
+                    ctx.stroke();
+                }
+            }
+            
+            drawVertexHandles(ctx, verts) {
+                if (this.type === 'square' || this.type === 'triangle') {
+                    ctx.fillStyle = '#fff';
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 1 / zoom;
+                    let size = 8 / zoom;
+                    for (let v of verts) {
+                        ctx.fillRect(v.x - size/2, v.y - size/2, size, size);
+                        ctx.strokeRect(v.x - size/2, v.y - size/2, size, size);
+                    }
+                } else if (this.type === 'quad') {
+                    ctx.fillStyle = '#fff';
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 1 / zoom;
+                    let radius = 6 / zoom;
+                    for (let v of verts) {
+                        ctx.beginPath();
+                        ctx.arc(v.x, v.y, radius, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            contains(px, py) {
+                let verts = this.getWorldVertices();
+                let inside = false;
+                for (let i = 0, j = verts.length - 1; i < verts.length; j = i++) {
+                    let xi = verts[i].x, yi = verts[i].y;
+                    let xj = verts[j].x, yj = verts[j].y;
+                    let intersect = ((yi > py) != (yj > py))
+                        && (px < (xj - xi) * (py - yi) / (yj - yi) + xi);
+                    if (intersect) inside = !inside;
+                }
+                return inside;
+            }
+            
+            snapshot() {
+                let c = Object.create(Object.getPrototypeOf(this));
+                Object.assign(c, this);
+                c.vertices = JSON.parse(JSON.stringify(this.vertices));
+                return c;
+            }
+            
+            copy() {
+                let c = this.snapshot();
+                c.id = Math.random().toString(36).substr(2, 9);
+                return c;
+            }
+        }
+
+        class Square extends Shape {
+            constructor(x, y, size = 100) {
+                super(x, y);
+                this.type = 'square';
+                let hs = size / 2;
+                this.vertices = [
+                    {x: -hs, y: -hs}, {x: hs, y: -hs},
+                    {x: hs, y: hs}, {x: -hs, y: hs}
+                ];
+            }
+        }
+
+        class Circle extends Shape {
+            constructor(x, y, radius = 50) {
+                super(x, y);
+                this.type = 'circle';
+                this.radius = radius;
+                this.alpha = 0.5;
+                this.updateColor();
+            }
+
+            draw(ctx, isSelected) {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.strokeStyle = isSelected ? '#fff' : 'rgba(255, 255, 255, 0.6)';
+                ctx.lineWidth = (isSelected ? 3 : 1.5) / zoom;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 4 / zoom, 0, Math.PI * 2);
+                ctx.fillStyle = '#fff';
+                ctx.fill();
+
+                if (isSelected && selectedShapes.length === 1) {
+                    let rotX = this.x;
+                    let rotY = this.y - this.radius - 40 / zoom;
+                    ctx.beginPath();
+                    ctx.moveTo(this.x, this.y - this.radius);
+                    ctx.lineTo(rotX, rotY);
+                    ctx.strokeStyle = '#aaa';
+                    ctx.lineWidth = 1 / zoom;
+                    ctx.setLineDash([5 / zoom, 5 / zoom]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    ctx.beginPath();
+                    ctx.arc(rotX, rotY, 6 / zoom, 0, Math.PI * 2);
+                    ctx.fillStyle = '#4a90e2';
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#fff';
+                    ctx.strokeStyle = '#000';
+                    ctx.lineWidth = 1 / zoom;
+                    let size = 8 / zoom;
+                    let rx = this.x + this.radius;
+                    let ry = this.y;
+                    ctx.fillRect(rx - size/2, ry - size/2, size, size);
+                    ctx.strokeRect(rx - size/2, ry - size/2, size, size);
+                }
+            }
+
+            contains(px, py) {
+                return dist({x: px, y: py}, {x: this.x, y: this.y}) <= this.radius;
+            }
+
+            getWorldVertices() {
+                return [];
+            }
+        }
+
+        class RightTriangle extends Shape {
+            constructor(x, y, w = 200, h = 150) {
+                super(x, y);
+                this.type = 'triangle';
+                this.vertices = [
+                    {x: -w/2, y: h/2}, 
+                    {x: w/2, y: h/2},  
+                    {x: -w/2, y: -h/2} 
+                ];
+            }
+        }
+
+        class Quadrilateral extends Shape {
+            constructor(x, y) {
+                super(x, y);
+                this.type = 'quad';
+                this.alpha = 0.5;
+                this.updateColor();
+                this.vertices = [
+                    {x: -65, y: -42.5}, {x: 45, y: -62.5},
+                    {x: 65, y: 47.5}, {x: -45, y: 57.5}
+                ];
+            }
+        }
+        
+        class Polygon extends Shape {
+            constructor(vertices, color) {
+                let cx = 0, cy = 0;
+                for (let v of vertices) { cx += v.x; cy += v.y; }
+                cx /= vertices.length; cy /= vertices.length;
+                
+                super(cx, cy, color);
+                this.type = 'polygon';
+                this.vertices = vertices.map(v => ({x: v.x - cx, y: v.y - cy}));
+            }
+        }
+
+        class TextBox extends Shape {
+            constructor(x, y, text = '') {
+                super(x, y);
+                this.type = 'text';
+                this.isText = true;
+                this.text = text;
+                this.fontSize = 20;
+                this.color = '#ffffff';
+                this.updateBounds();
+            }
+
+            updateBounds() {
+                let testCtx = document.createElement('canvas').getContext('2d');
+                testCtx.font = this.fontSize + "px sans-serif";
+                let lines = (this.text || "Type here...").split('\n');
+                let maxW = 0;
+                for(let l of lines) maxW = Math.max(maxW, testCtx.measureText(l).width);
+                let w = maxW + 20; 
+                let h = lines.length * this.fontSize * 1.2 + 10;
+                let hw = w/2, hh = h/2;
+                this.vertices = [
+                    {x: -hw, y: -hh}, {x: hw, y: -hh}, {x: hw, y: hh}, {x: -hw, y: hh}
+                ];
+            }
+
+            draw(ctx, isSelected) {
+                this.updateBounds();
+                let verts = this.getWorldVertices();
+
+                if (isSelected && activeTextBox !== this) {
+                    ctx.beginPath();
+                    ctx.moveTo(verts[0].x, verts[0].y);
+                    for (let i = 1; i < 4; i++) ctx.lineTo(verts[i].x, verts[i].y);
+                    ctx.closePath();
+                    ctx.strokeStyle = '#4a90e2';
+                    ctx.lineWidth = 2 / zoom;
+                    ctx.setLineDash([5 / zoom, 5 / zoom]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+                if (activeTextBox !== this) {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(this.angle * Math.PI / 180);
+                    ctx.fillStyle = this.color;
+                    ctx.font = this.fontSize + "px sans-serif";
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    
+                    let lines = (this.text || "Type here...").split('\n');
+                    let h = this.fontSize * 1.2;
+                    let startY = -(lines.length * h) / 2 + h / 2;
+                    
+                    for(let i=0; i<lines.length; i++) {
+                        ctx.fillText(lines[i], 0, startY + i * h);
+                    }
+                    ctx.restore();
+                }
+            }
+        }
+
+        function updateToolbarUI() {
+            const shapeTools = document.getElementById('shape-tools');
+            const shapeColor = document.getElementById('shape-color');
+            const shapeAlpha = document.getElementById('shape-alpha');
+            
+            const textTools = document.getElementById('text-tools');
+            const textColor = document.getElementById('text-color');
+            const textSize = document.getElementById('text-size');
+
+            if (selectedShapes.length > 0 && selectedShapes.every(s => !s.isText)) {
+                shapeTools.classList.add('show');
+                
+                let firstShape = selectedShapes[0];
+                if (shapeColor.value !== firstShape.baseColor) {
+                    shapeColor.value = firstShape.baseColor;
+                }
+                if (parseFloat(shapeAlpha.value) !== firstShape.alpha) {
+                    shapeAlpha.value = firstShape.alpha;
+                }
+            } else {
+                shapeTools.classList.remove('show');
+            }
+            
+            if (selectedShapes.length > 0 && selectedShapes.every(s => s.isText)) {
+                textTools.classList.add('show');
+                
+                let firstText = selectedShapes[0];
+                if (textColor.value !== firstText.color) {
+                    textColor.value = firstText.color;
+                }
+                if (parseInt(textSize.value) !== firstText.fontSize) {
+                    textSize.value = firstText.fontSize;
+                }
+            } else {
+                textTools.classList.remove('show');
+            }
+        }
+
+        function drawGrid() {
+            ctx.strokeStyle = '#2a2a2a';
+            ctx.lineWidth = 1 / zoom;
+            
+            let startX = -cameraX / zoom;
+            let startY = -cameraY / zoom;
+            let endX = (canvas.width - cameraX) / zoom;
+            let endY = (canvas.height - cameraY) / zoom;
+            
+            let firstX = Math.floor(startX / 50) * 50;
+            let firstY = Math.floor(startY / 50) * 50;
+            
+            for(let i = firstX; i < endX; i += 50) { 
+                ctx.beginPath(); ctx.moveTo(i, startY); ctx.lineTo(i, endY); ctx.stroke(); 
+            }
+            for(let j = firstY; j < endY; j += 50) { 
+                ctx.beginPath(); ctx.moveTo(startX, j); ctx.lineTo(endX, j); ctx.stroke(); 
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.save();
+            ctx.translate(cameraX, cameraY);
+            ctx.scale(zoom, zoom);
+            
+            drawGrid();
+
+            let normalShapes = shapes.filter(s => !s.isText);
+            let textShapes = shapes.filter(s => s.isText);
+
+            for (let shape of normalShapes) {
+                let isSelected = selectedShapes.includes(shape);
+                shape.draw(ctx, isSelected);
+            }
+            
+            for (let shape of textShapes) {
+                let isSelected = selectedShapes.includes(shape);
+                shape.draw(ctx, isSelected);
+            }
+            
+            if (selectedShapes.length > 1) {
+                let handle = getGroupRotationHandle();
+                let center = getGroupCenter(selectedShapes);
+                
+                ctx.beginPath();
+                ctx.moveTo(center.x, center.y);
+                ctx.lineTo(handle.x, handle.y);
+                ctx.strokeStyle = 'rgba(170, 170, 170, 0.5)';
+                ctx.lineWidth = 1 / zoom;
+                ctx.setLineDash([5 / zoom, 5 / zoom]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                
+                ctx.beginPath();
+                ctx.arc(handle.x, handle.y, 6 / zoom, 0, Math.PI * 2);
+                ctx.fillStyle = '#4a90e2';
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            if (isBoxSelecting && selectionBox) {
+                ctx.fillStyle = 'rgba(74, 144, 226, 0.2)';
+                ctx.strokeStyle = '#4a90e2';
+                ctx.lineWidth = 1 / zoom;
+                ctx.fillRect(selectionBox.x, selectionBox.y, selectionBox.w, selectionBox.h);
+                ctx.strokeRect(selectionBox.x, selectionBox.y, selectionBox.w, selectionBox.h);
+            }
+            
+            if (mode === 'cut' && cutStart) {
+                ctx.beginPath();
+                ctx.moveTo(cutStart.x, cutStart.y);
+                ctx.lineTo(cutEnd ? cutEnd.x : cutStart.x, cutEnd ? cutEnd.y : cutStart.y);
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = 2 / zoom;
+                ctx.setLineDash([5 / zoom, 5 / zoom]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+            
+            ctx.restore();
+            
+            if (activeTextBox) {
+                let screenPos = toScreen(activeTextBox.x, activeTextBox.y);
+                textInput.style.left = screenPos.x + 'px';
+                textInput.style.top = screenPos.y + 'px';
+                textInput.style.transform = `translate(-50%, -50%) rotate(${activeTextBox.angle}deg)`;
+            }
+
+            updateToolbarUI();
+        }
+
+        function getShapeAt(x, y) {
+            for (let i = shapes.length - 1; i >= 0; i--) {
+                if (shapes[i].isText && shapes[i].contains(x, y)) return shapes[i];
+            }
+            for (let i = shapes.length - 1; i >= 0; i--) {
+                if (!shapes[i].isText && shapes[i].contains(x, y)) return shapes[i];
+            }
+            return null;
+        }
+
+        function getHandleAt(shape, x, y) {
+            let verts = shape.getWorldVertices();
+            let clickThresh = 10 / zoom;
+            
+            if (selectedShapes.length === 1) {
+                if (shape.type === 'circle') {
+                    let rotX = shape.x;
+                    let rotY = shape.y - shape.radius - 40 / zoom;
+                    if (dist({x, y}, {x: rotX, y: rotY}) < clickThresh) return { type: 'rotate' };
+                    let rx = shape.x + shape.radius;
+                    let ry = shape.y;
+                    if (dist({x, y}, {x: rx, y: ry}) < clickThresh) return { type: 'vertex', index: 0 };
+                } else {
+                    let localTop = Math.min(...shape.vertices.map(v => v.y));
+                    let baseLocalX = 0;
+                    let baseLocalY = (shape.type === 'quad') ? 0 : localTop;
+                    let handleLocalY = baseLocalY - 40 / zoom;
+                    
+                    let handleWorld = rotatePoint(0, 0, baseLocalX, handleLocalY, shape.angle);
+                    let rotX = shape.x + handleWorld.x;
+                    let rotY = shape.y + handleWorld.y;
+                    
+                    if (dist({x,y}, {x: rotX, y: rotY}) < clickThresh) return { type: 'rotate' };
+                }
+            }
+            
+            if (shape.type === 'square' || shape.type === 'quad' || shape.type === 'triangle') {
+                for (let i = 0; i < verts.length; i++) {
+                    if (dist({x,y}, verts[i]) < 12 / zoom) return { type: 'vertex', index: i };
+                }
+            }
+            
+            if (shape.type === 'quad') {
+                if (dist({x,y}, {x: shape.x, y: shape.y}) < 10 / zoom) {
+                    return { type: 'center_resize' };
+                }
+            }
+            
+            return null;
+        }
+        
+        function openTextInput(tb) {
+            activeTextBox = tb;
+            let screenPos = toScreen(tb.x, tb.y);
+            textInput.style.left = screenPos.x + 'px';
+            textInput.style.top = screenPos.y + 'px';
+            textInput.style.fontSize = (tb.fontSize * zoom) + 'px';
+            textInput.style.transform = `translate(-50%, -50%) rotate(${tb.angle}deg)`;
+            textInput.value = tb.text;
+            textInput.style.display = 'block';
+            
+            textInput.focus();
+
+            textInput.oninput = () => {
+                tb.text = textInput.value;
+                let lines = tb.text.split('\n');
+                let maxW = 0;
+                let testCtx = document.createElement('canvas').getContext('2d');
+                testCtx.font = (tb.fontSize * zoom) + "px sans-serif";
+                for(let l of lines) maxW = Math.max(maxW, testCtx.measureText(l).width);
+                
+                textInput.style.width = (maxW + 20) + 'px';
+                textInput.style.height = (lines.length * tb.fontSize * zoom * 1.2 + 20) + 'px';
+                draw(); 
+            };
+            textInput.oninput(); 
+        }
+
+        textInput.addEventListener('blur', () => {
+            if (activeTextBox) {
+                if (!activeTextBox.text.trim()) {
+                    shapes = shapes.filter(s => !s.isText || s.text.trim());
+                }
+                activeTextBox = null;
+                textInput.style.display = 'none';
+                saveState();
+                draw();
+                if (mode === 'text') setMode('select');
+            }
+        });
+
+        window.addEventListener('contextmenu', e => e.preventDefault());
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (activeTextBox) textInput.blur();
+            
+            let zoomAmount = e.deltaY > 0 ? 0.9 : 1.1;
+            let mx = e.clientX;
+            let my = e.clientY;
+            
+            let worldBeforeX = (mx - cameraX) / zoom;
+            let worldBeforeY = (my - cameraY) / zoom;
+            
+            zoom *= zoomAmount;
+            zoom = Math.max(0.1, Math.min(zoom, 10));
+            
+            cameraX = mx - worldBeforeX * zoom;
+            cameraY = my - worldBeforeY * zoom;
+            draw();
+        }, {passive: false});
+        
+        canvas.addEventListener('dblclick', (e) => {
+            if (mode === 'select' || mode === 'text') {
+                const worldPos = toWorld(e.clientX, e.clientY);
+                let clickedShape = getShapeAt(worldPos.x, worldPos.y);
+                if (clickedShape && clickedShape.isText) {
+                    openTextInput(clickedShape);
+                }
+            }
+        });
+
+        canvas.addEventListener('mousedown', (e) => {
+            if (activeTextBox && e.target !== textInput) {
+                textInput.blur();
+            }
+
+            if (e.button === 2) { 
+                isPanning = true;
+                panStart = { x: e.clientX, y: e.clientY };
+                return;
+            }
+            
+            const worldPos = toWorld(e.clientX, e.clientY);
+            const mx = worldPos.x;
+            const my = worldPos.y;
+            
+            hasSavedStateForCurrentAction = false;
+            
+            if (mode === 'cut') {
+                let vertex = getClosestVertex(mx, my, 30 / zoom);
+                if (vertex) {
+                    cutStart = {x: vertex.x, y: vertex.y};
+                    cutEnd = {x: vertex.x, y: vertex.y};
+                    isDrawingCut = true;
+                    hideCutTooltip();
+                }
+                return;
+            }
+            
+            if (mode === 'text') {
+                let clickedShape = getShapeAt(mx, my);
+                if (clickedShape && clickedShape.isText) {
+                    selectedShapes = [clickedShape];
+                    openTextInput(clickedShape);
+                    draw();
+                    return;
+                }
+                let tb = new TextBox(mx, my, "");
+                addShape(tb);
+                openTextInput(tb);
+                return;
+            }
+            
+            if (selectedShapes.length > 1) {
+                let groupHandle = getGroupRotationHandle();
+                if (groupHandle && dist({x:mx, y:my}, groupHandle) < 10 / zoom) {
+                    isRotatingGroup = true;
+                    groupInitialCenter = getGroupCenter(selectedShapes);
+                    groupInitialAngle = Math.atan2(my - groupInitialCenter.y, mx - groupInitialCenter.x);
+                    selectedShapes.forEach(s => {
+                        s.initialAngle = s.angle;
+                        s.initialX = s.x;
+                        s.initialY = s.y;
+                    });
+                    return;
+                }
+            }
+
+            for (let shape of selectedShapes) {
+                let handle = getHandleAt(shape, mx, my);
+                if (handle) {
+                    if (handle.type === 'rotate') {
+                        isRotating = true;
+                        dragStart = {x: mx, y: my};
+                        return;
+                    } else if (handle.type === 'vertex') {
+                        isResizing = true;
+                        resizeVertexIndex = handle.index;
+                        dragStart = {x: mx, y: my};
+                        shape.lastMx = mx; 
+                        shape.lastMy = my; 
+                        if (selectedShapes.length > 1) selectedShapes = [shape];
+                        return;
+                    } else if (handle.type === 'center_resize') {
+                        isCenterResizing = true;
+                        dragStart = {x: mx, y: my};
+                        if (selectedShapes.length > 1) selectedShapes = [shape];
+                        shape.initialVertices = JSON.parse(JSON.stringify(shape.vertices));
+                        shape.lastDialAngle = Math.atan2(my - shape.y, mx - shape.x);
+                        shape.dialScale = 1.0;
+                        return;
+                    }
+                }
+            }
+
+            let clickedShape = getShapeAt(mx, my);
+            
+            if (clickedShape) {
+                isDragging = true;
+                dragStart = {x: mx, y: my};
+                
+                if (e.shiftKey) {
+                    let idx = selectedShapes.indexOf(clickedShape);
+                    if (idx > -1) selectedShapes.splice(idx, 1);
+                    else selectedShapes.push(clickedShape);
+                } else if (!selectedShapes.includes(clickedShape)) {
+                    selectedShapes = [clickedShape];
+                }
+                
+                selectedShapes.forEach(s => {
+                    shapes.splice(shapes.indexOf(s), 1);
+                    shapes.push(s);
+                    s.unsnappedX = s.x;
+                    s.unsnappedY = s.y;
+                    s.unsnappedAngle = s.angle;
+                    if (s.vertices) {
+                        s.unsnappedVertices = JSON.parse(JSON.stringify(s.vertices));
+                    }
+                });
+                
+            } else {
+                if (!e.shiftKey) selectedShapes = [];
+                isBoxSelecting = true;
+                dragStart = {x: mx, y: my};
+                selectionBox = {x: mx, y: my, w: 0, h: 0};
+            }
+            draw();
+        });
+
+        function getCircumcircle(A, B, C) {
+            let D = 2 * (A.x * (B.y - C.y) + B.x * (C.y - A.y) + C.x * (A.y - B.y));
+            if (Math.abs(D) < 1e-5) return null;
+            
+            let Ux = ((A.x*A.x + A.y*A.y) * (B.y - C.y) + (B.x*B.x + B.y*B.y) * (C.y - A.y) + (C.x*C.x + C.y*C.y) * (A.y - B.y)) / D;
+            let Uy = ((A.x*A.x + A.y*A.y) * (C.x - B.x) + (B.x*B.x + B.y*B.y) * (A.x - C.x) + (C.x*C.x + C.y*C.y) * (B.x - A.x)) / D;
+            
+            let center = { x: Ux, y: Uy };
+            let radius = dist(center, A);
+            return { x: center.x, y: center.y, radius: radius };
+        }
+        
+        function applySmartSnap(shape, staticShapes) {
+            if (shape.type === 'quad' || shape.isText) return false; 
+            
+            staticShapes = staticShapes.filter(s => !s.isText);
+
+            let snapThreshold = 50 / zoom;
+
+            if (shape.type === 'circle') {
+                let bestSnapDist = snapThreshold;
+                let bestCircumcircle = null;
+
+                for (let s of staticShapes) {
+                    let verts = s.getWorldVertices();
+                    if (verts.length !== 3) continue;
+
+                    let circum = getCircumcircle(verts[0], verts[1], verts[2]);
+                    if (circum) {
+                        let d = dist({x: shape.unsnappedX, y: shape.unsnappedY}, {x: circum.x, y: circum.y});
+                        if (d < bestSnapDist) {
+                            bestSnapDist = d;
+                            bestCircumcircle = circum;
+                        }
+                    }
+                }
+
+                if (bestCircumcircle) {
+                    shape.x = bestCircumcircle.x;
+                    shape.y = bestCircumcircle.y;
+                    shape.radius = bestCircumcircle.radius;
+                    return true;
+                }
+                return false;
+            }
+            
+            let movingVerts = shape.getWorldVertices();
+            let movingCenterMass = getCenter(movingVerts); 
+            let movingEdges = [];
+            
+            for (let i = 0; i < movingVerts.length; i++) {
+                movingEdges.push({
+                    v1: movingVerts[i],
+                    v2: movingVerts[(i + 1) % movingVerts.length],
+                    index: i
+                });
+            }
+            
+            let staticEdges = [];
+            for (let s of staticShapes) {
+                if (s.type === 'circle') continue;
+                let verts = s.getWorldVertices();
+                let sCenterMass = getCenter(verts);
+                for (let i = 0; i < verts.length; i++) {
+                    staticEdges.push({
+                        shape: s,
+                        index: i,
+                        v1: verts[i],
+                        v2: verts[(i + 1) % verts.length],
+                        shapeCenterMass: sCenterMass
+                    });
+                }
+            }
+            
+            let bestSnap = null;
+            let minDist = snapThreshold;
+            
+            for (let me of movingEdges) {
+                let midM = { x: (me.v1.x + me.v2.x)/2, y: (me.v1.y + me.v2.y)/2 };
+                for (let se of staticEdges) {
+                    let midS = { x: (se.v1.x + se.v2.x)/2, y: (se.v1.y + se.v2.y)/2 };
+                    let d = dist(midM, midS);
+                    
+                    if (d < minDist) {
+                        minDist = d;
+                        bestSnap = { movingEdge: me, staticEdge: se };
+                    }
+                }
+            }
+            
+            if (bestSnap) {
+                let me = bestSnap.movingEdge;
+                let se = bestSnap.staticEdge;
+                
+                let sideM = Math.sign((me.v2.x - me.v1.x) * (movingCenterMass.y - me.v1.y) - (me.v2.y - me.v1.y) * (movingCenterMass.x - me.v1.x));
+                let sideS = Math.sign((se.v2.x - se.v1.x) * (se.shapeCenterMass.y - se.v1.y) - (se.v2.y - se.v1.y) * (se.shapeCenterMass.x - se.v1.x));
+                
+                let matchAntiParallel = (sideM === sideS);
+                let targetVecX, targetVecY, targetMatchV1;
+                
+                if (matchAntiParallel) {
+                    targetVecX = se.v1.x - se.v2.x;
+                    targetVecY = se.v1.y - se.v2.y;
+                    targetMatchV1 = se.v2; 
+                } else {
+                    targetVecX = se.v2.x - se.v1.x;
+                    targetVecY = se.v2.y - se.v1.y;
+                    targetMatchV1 = se.v1; 
+                }
+                
+                let localV1 = shape.vertices[me.index];
+                let localV2 = shape.vertices[(me.index + 1) % shape.vertices.length];
+                let localLen = dist(localV1, localV2);
+                let staticLen = dist(se.v1, se.v2);
+                
+                let scale = staticLen / localLen;
+                if (Math.abs(scale - 1) > 0.001) {
+                    if (shape.type !== 'square') return false;
+                    shape.vertices = shape.vertices.map(v => ({x: v.x * scale, y: v.y * scale}));
+                }
+                
+                let scaledWorldVerts = shape.getWorldVertices(); 
+                let scaledWorldV1 = scaledWorldVerts[me.index];
+                let scaledWorldV2 = scaledWorldVerts[(me.index + 1) % scaledWorldVerts.length];
+                
+                let currentAngleRad = Math.atan2(scaledWorldV2.y - scaledWorldV1.y, scaledWorldV2.x - scaledWorldV1.x);
+                let targetAngleRad = Math.atan2(targetVecY, targetVecX);
+                
+                let deltaAngle = targetAngleRad - currentAngleRad;
+                shape.angle += deltaAngle * 180 / Math.PI;
+                
+                let finalWorldVerts = shape.getWorldVertices(); 
+                let finalWorldV1 = finalWorldVerts[me.index];
+                
+                let dx = targetMatchV1.x - finalWorldV1.x;
+                let dy = targetMatchV1.y - finalWorldV1.y;
+                
+                shape.x += dx;
+                shape.y += dy;
+                
+                return true; 
+            }
+            return false;
+        }
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isPanning) {
+                cameraX += e.clientX - panStart.x;
+                cameraY += e.clientY - panStart.y;
+                panStart = { x: e.clientX, y: e.clientY };
+                draw();
+                return;
+            }
+            
+            const worldPos = toWorld(e.clientX, e.clientY);
+            const mx = worldPos.x;
+            const my = worldPos.y;
+            const dx = mx - dragStart.x;
+            const dy = my - dragStart.y;
+            
+            if (mode === 'cut' && isDrawingCut) {
+                let vertex = getClosestVertex(mx, my, 30 / zoom);
+                if (vertex) {
+                    cutEnd = {x: vertex.x, y: vertex.y};
+                } else {
+                    cutEnd = {x: mx, y: my}; 
+                }
+                draw();
+                return;
+            }
+
+            if (isDragging || isRotating || isResizing || isCenterResizing || isRotatingGroup) {
+                if (!hasSavedStateForCurrentAction) {
+                    saveState();
+                    hasSavedStateForCurrentAction = true;
+                }
+            }
+
+            if (isDragging) {
+                selectedShapes.forEach(s => {
+                    s.unsnappedX += dx;
+                    s.unsnappedY += dy;
+                });
+                dragStart = {x: mx, y: my};
+                
+                if (selectedShapes.length === 1) {
+                    let shape = selectedShapes[0];
+                    let staticShapes = shapes.filter(s => s !== shape);
+                    
+                    shape.x = shape.unsnappedX;
+                    shape.y = shape.unsnappedY;
+                    shape.angle = shape.unsnappedAngle;
+                    if (shape.vertices) {
+                        shape.vertices = JSON.parse(JSON.stringify(shape.unsnappedVertices));
+                    }
+                    
+                    applySmartSnap(shape, staticShapes);
+                    
+                } else if (selectedShapes.length > 1) {
+                    selectedShapes.forEach(s => {
+                        s.x = s.unsnappedX;
+                        s.y = s.unsnappedY;
+                    });
+                }
+                
+            } else if (isRotatingGroup) {
+                let currentAngle = Math.atan2(my - groupInitialCenter.y, mx - groupInitialCenter.x);
+                let deltaRad = currentAngle - groupInitialAngle;
+                let deltaDeg = deltaRad * 180 / Math.PI;
+                
+                let snap90 = Math.round(deltaDeg / 90) * 90;
+                if (Math.abs(deltaDeg - snap90) < 10) deltaDeg = snap90;
+                else if (!e.altKey) deltaDeg = Math.round(deltaDeg / 15) * 15;
+                
+                selectedShapes.forEach(s => {
+                    s.angle = s.initialAngle + deltaDeg;
+                    let p = rotatePoint(groupInitialCenter.x, groupInitialCenter.y, s.initialX, s.initialY, deltaDeg);
+                    s.x = p.x;
+                    s.y = p.y;
+                });
+                
+            } else if (isRotating && selectedShapes.length === 1) {
+                let shape = selectedShapes[0];
+                let center = shape.type === 'circle' ? {x: shape.x, y: shape.y} : getCenter(shape.getWorldVertices());
+                let angle = Math.atan2(my - center.y, mx - center.x) * 180 / Math.PI + 90;
+                
+                let snap90 = Math.round(angle / 90) * 90;
+                if (Math.abs(angle - snap90) < 10) shape.angle = snap90;
+                else if (!e.altKey) shape.angle = Math.round(angle / 15) * 15;
+                else shape.angle = angle;
+                
+            } else if (isCenterResizing && selectedShapes.length === 1) {
+                let shape = selectedShapes[0];
+                let currentAngle = Math.atan2(my - shape.y, mx - shape.x);
+                let deltaAngle = currentAngle - shape.lastDialAngle;
+                
+                if (deltaAngle > Math.PI) deltaAngle -= Math.PI * 2;
+                if (deltaAngle < -Math.PI) deltaAngle += Math.PI * 2;
+                
+                shape.lastDialAngle = currentAngle;
+                
+                shape.dialScale *= (1 + deltaAngle * 0.3);
+                shape.dialScale = Math.max(0.1, Math.min(shape.dialScale, 10)); 
+                
+                shape.vertices = shape.initialVertices.map(v => ({
+                    x: v.x * shape.dialScale,
+                    y: v.y * shape.dialScale
+                }));
+                
+            } else if (isResizing && selectedShapes.length === 1) {
+                let shape = selectedShapes[0];
+                
+                if (shape.type === 'circle') {
+                    let newRadius = dist({x: mx, y: my}, {x: shape.x, y: shape.y});
+                    shape.radius = Math.max(10 / zoom, newRadius);
+                } else if (shape.type === 'square') {
+                    let localP = rotatePoint(shape.x, shape.y, mx, my, -shape.angle);
+                    let localDx = localP.x - shape.x;
+                    let localDy = localP.y - shape.y;
+                    if(shape.isFlippedH) localDx *= -1;
+                    if(shape.isFlippedV) localDy *= -1;
+                    
+                    let size = Math.max(Math.abs(localDx), Math.abs(localDy)) * 2;
+                    let hs = size / 2;
+                    shape.vertices = [
+                        {x: -hs, y: -hs}, {x: hs, y: -hs},
+                        {x: hs, y: hs}, {x: -hs, y: hs}
+                    ];
+                } else if (shape.type === 'triangle') {
+                    let localDelta = rotatePoint(0, 0, dx, dy, -shape.angle);
+                    if (shape.isFlippedH) localDelta.x *= -1;
+                    if (shape.isFlippedV) localDelta.y *= -1;
+
+                    if (resizeVertexIndex === 1) {
+                        shape.vertices[1].x += localDelta.x;
+                    } else if (resizeVertexIndex === 2) {
+                        shape.vertices[2].y += localDelta.y;
+                    } else if (resizeVertexIndex === 0) {
+                        shape.vertices[0].x += localDelta.x;
+                        shape.vertices[0].y += localDelta.y;
+                        shape.vertices[1].y += localDelta.y;
+                        shape.vertices[2].x += localDelta.x;
+                    }
+                    dragStart = {x: mx, y: my};
+                } else if (shape.type === 'quad') {
+                    let dx_world = mx - shape.lastMx;
+                    let dy_world = my - shape.lastMy;
+                    shape.lastMx = mx; 
+                    shape.lastMy = my;
+
+                    let localDelta = rotatePoint(0,0, dx_world, dy_world, -shape.angle);
+                    if(shape.isFlippedH) localDelta.x *= -1;
+                    if(shape.isFlippedV) localDelta.y *= -1;
+
+                    shape.vertices[resizeVertexIndex].x += localDelta.x;
+                    shape.vertices[resizeVertexIndex].y += localDelta.y;
+
+                    let cx = 0, cy = 0;
+                    for (let v of shape.vertices) { cx += v.x; cy += v.y; }
+                    cx /= shape.vertices.length; 
+                    cy /= shape.vertices.length;
+
+                    let worldShift = rotatePoint(0, 0, cx, cy, shape.angle);
+                    shape.x += worldShift.x;
+                    shape.y += worldShift.y;
+                    
+                    for (let i = 0; i < shape.vertices.length; i++) { 
+                        shape.vertices[i].x -= cx; 
+                        shape.vertices[i].y -= cy; 
+                    }
+                }
+
+            } else if (isBoxSelecting) {
+                selectionBox.w = mx - selectionBox.x;
+                selectionBox.h = my - selectionBox.y;
+                
+                let bx = Math.min(selectionBox.x, mx);
+                let by = Math.min(selectionBox.y, my);
+                let bw = Math.abs(selectionBox.w);
+                let bh = Math.abs(selectionBox.h);
+                
+                selectedShapes = [];
+                shapes.forEach(s => {
+                    let c = {x: s.x, y: s.y};
+                    if (c.x > bx && c.x < bx + bw && c.y > by && c.y < by + bh) {
+                        selectedShapes.push(s);
+                    }
+                });
+            }
+            draw();
+        });
+
+        canvas.addEventListener('mouseup', (e) => {
+            isPanning = false;
+            isDragging = false;
+            isBoxSelecting = false;
+            isRotating = false;
+            isRotatingGroup = false;
+            isResizing = false;
+            isCenterResizing = false;
+            resizeVertexIndex = -1;
+            selectionBox = null;
+            
+            if (mode === 'cut' && isDrawingCut) {
+                isDrawingCut = false;
+                const worldPos = toWorld(e.clientX, e.clientY);
+                let vertex = getClosestVertex(worldPos.x, worldPos.y, 30 / zoom);
+                if (vertex && dist(cutStart, vertex) > 5) {
+                    cutEnd = {x: vertex.x, y: vertex.y};
+                    showCutTooltip(e.clientX, e.clientY);
+                } else {
+                    cutStart = null; cutEnd = null;
+                }
+            }
+            draw();
+        });
+
+        function performCut() {
+            if (!cutStart || !cutEnd || dist(cutStart, cutEnd) < 1) return;
+            
+            saveState();
+            
+            let newShapes = [];
+            let shapesToRemove = [];
+
+            const p1 = cutStart;
+            const p2 = cutEnd;
+            const segmentLen = dist(p1, p2);
+
+            for (let shape of shapes) {
+                if (shape.isText || shape.type === 'circle') continue;
+
+                let verts = shape.getWorldVertices();
+                let intersections = [];
+                for (let i = 0; i < verts.length; i++) {
+                    let cur = verts[i];
+                    let next = verts[(i + 1) % verts.length];
+                    
+                    let x1 = cur.x, y1 = cur.y;
+                    let x2 = next.x, y2 = next.y;
+                    let x3 = p1.x, y3 = p1.y;
+                    let x4 = p2.x, y4 = p2.y;
+                    
+                    let den = (y4-y3)*(x2-x1) - (x4-x3)*(y2-y1);
+                    if (Math.abs(den) > 0.0001) {
+                        let uA = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / den;
+                        if (uA >= -0.001 && uA <= 1.001) { 
+                            let ix = x1 + uA * (x2 - x1);
+                            let iy = y1 + uA * (y2 - y1);
+                            if (!intersections.find(p => dist(p, {x:ix, y:iy}) < 1.0)) {
+                                intersections.push({x:ix, y:iy});
+                            }
+                        }
+                    }
+                }
+                
+                if (intersections.length >= 2) {
+                    let validCut = true;
+                    for (let inter of intersections) {
+                        let d = dist(p1, inter) + dist(inter, p2);
+                        if (Math.abs(d - segmentLen) > 2.0) { 
+                            validCut = false;
+                            break;
+                        }
+                    }
+                    
+                    if (validCut) {
+                        let poly1 = [], poly2 = [];
+                        const side = (p) => Math.sign((p2.x - p1.x) * (p.y - p1.y) - (p2.y - p1.y) * (p.x - p1.x));
+                        
+                        for (let i = 0; i < verts.length; i++) {
+                            let cur = verts[i];
+                            let next = verts[(i + 1) % verts.length];
+                            
+                            let curSide = side(cur);
+                            let distToLine = Math.abs((p2.x-p1.x)*(cur.y-p1.y) - (p2.y-p1.y)*(cur.x-p1.x)) / segmentLen;
+                            
+                            if (curSide >= 0 || distToLine < 1.0) poly1.push(cur);
+                            if (curSide <= 0 || distToLine < 1.0) poly2.push(cur);
+                            
+                            let x1 = cur.x, y1 = cur.y;
+                            let x2 = next.x, y2 = next.y;
+                            let x3 = p1.x, y3 = p1.y;
+                            let x4 = p2.x, y4 = p2.y;
+                            let den = (y4-y3)*(x2-x1) - (x4-x3)*(y2-y1);
+                            if (Math.abs(den) > 0.0001) {
+                                let uA = ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / den;
+                                if (uA >= 0.001 && uA <= 0.999) { 
+                                    let ix = x1 + uA * (x2 - x1);
+                                    let iy = y1 + uA * (y2 - y1);
+                                    poly1.push({x:ix, y:iy});
+                                    poly2.push({x:ix, y:iy});
+                                }
+                            }
+                        }
+                        
+                        let dedupe = (pts) => {
+                            let res = [];
+                            for(let p of pts) {
+                                if(res.length===0 || dist(res[res.length-1], p) > 0.5) res.push(p);
+                            }
+                            if(res.length > 1 && dist(res[0], res[res.length-1]) < 0.5) res.pop();
+                            return res;
+                        };
+                        
+                        poly1 = dedupe(poly1);
+                        poly2 = dedupe(poly2);
+
+                        if (poly1.length >= 3 && poly2.length >= 3) {
+                            if (poly1.length < verts.length + intersections.length && poly2.length < verts.length + intersections.length) {
+                                shapesToRemove.push(shape);
+                                newShapes.push(new Polygon(poly1, shape.color));
+                                newShapes.push(new Polygon(poly2, shape.color));
+                            }
+                        }
+                    }
+                }
+            }
+
+            shapes = shapes.filter(s => !shapesToRemove.includes(s));
+            shapes.push(...newShapes);
+            
+            cutStart = null; cutEnd = null;
+            selectedShapes = [];
+            hideCutTooltip();
+            setMode('select');
+            draw();
+        }
+
+        const tooltip = document.getElementById('tooltip');
+        function showCutTooltip(x, y) {
+            tooltip.style.display = 'block';
+            tooltip.style.left = x + 'px';
+            tooltip.style.top = y + 'px';
+        }
+        function hideCutTooltip() {
+            tooltip.style.display = 'none';
+        }
+        document.getElementById('btn-confirm-cut').addEventListener('click', performCut);
+
+        document.addEventListener('keydown', (e) => {
+            if (document.activeElement === textInput) return;
+            
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                deleteSelected();
+            } else if (e.ctrlKey || e.metaKey) {
+                if (e.key === 'z' || e.key === 'Z') { undo(); e.preventDefault(); return; }
+                if (e.key === 'c' || e.key === 'C') copySelected();
+                if (e.key === 'v' || e.key === 'V') pasteSelected();
+            } else {
+                if (e.key === 'v' || e.key === 'V') setMode('select');
+                if (e.key === 'k' || e.key === 'K') setMode('cut');
+                if (e.key === 'x' || e.key === 'X') {
+                    setMode('text');
+                    let viewCenterWorld = toWorld(canvas.width/2, canvas.height/2);
+                    let tb = new TextBox(viewCenterWorld.x, viewCenterWorld.y, "");
+                    addShape(tb);
+                    openTextInput(tb);
+                }
+                
+                let viewCenterWorld = toWorld(canvas.width/2, canvas.height/2);
+                if (e.key === 's' || e.key === 'S') addShape(new Square(viewCenterWorld.x, viewCenterWorld.y));
+                if (e.key === 'c' || e.key === 'C') addShape(new Circle(viewCenterWorld.x, viewCenterWorld.y));
+                if (e.key === 't' || e.key === 'T') addShape(new RightTriangle(viewCenterWorld.x, viewCenterWorld.y, 200, 150));
+                if (e.key === 'q' || e.key === 'Q') addShape(new Quadrilateral(viewCenterWorld.x, viewCenterWorld.y));
+            }
+        });
+
+        function deleteSelected() {
+            if(selectedShapes.length === 0) return;
+            saveState();
+            shapes = shapes.filter(s => !selectedShapes.includes(s));
+            selectedShapes = [];
+            draw();
+        }
+
+        function copySelected() {
+            clipboard = selectedShapes.map(s => s.copy());
+        }
+
+        function pasteSelected() {
+            if (clipboard.length > 0) {
+                saveState();
+                selectedShapes = [];
+                clipboard.forEach(s => {
+                    let newShape = s.copy();
+                    newShape.x += 30 / zoom;
+                    newShape.y += 30 / zoom;
+                    shapes.push(newShape);
+                    selectedShapes.push(newShape);
+                });
+                clipboard = clipboard.map(s => { let sn = s.copy(); sn.x+=30/zoom; sn.y+=30/zoom; return sn; });
+                draw();
+            }
+        }
+        
+        function flipSelected(axis) {
+            if(selectedShapes.length === 0) return;
+            saveState();
+            selectedShapes.forEach(s => {
+                if (axis === 'h') s.isFlippedH = !s.isFlippedH;
+                if (axis === 'v') s.isFlippedV = !s.isFlippedV;
+            });
+            draw();
+        }
+
+        function addShape(shape) {
+            saveState();
+            shapes.push(shape);
+            selectedShapes = [shape];
+            setMode('select');
+            draw();
+        }
+        
+        function setMode(newMode) {
+            mode = newMode;
+            document.querySelectorAll('#toolbar button').forEach(b => b.classList.remove('active'));
+            if(mode==='select') document.getElementById('btn-select').classList.add('active');
+            if(mode==='cut') document.getElementById('btn-line-cut').classList.add('active');
+            if(mode==='text') document.getElementById('btn-text').classList.add('active');
+            
+            cutStart = null; cutEnd = null;
+            hideCutTooltip();
+            draw();
+        }
+
+        document.getElementById('btn-select').addEventListener('click', () => setMode('select'));
+        document.getElementById('btn-line-cut').addEventListener('click', () => setMode('cut'));
+        document.getElementById('btn-text').addEventListener('click', () => {
+            setMode('text');
+            let center = toWorld(canvas.width/2, canvas.height/2);
+            let tb = new TextBox(center.x, center.y, "");
+            addShape(tb);
+            openTextInput(tb);
+        });
+        
+        document.getElementById('btn-square').addEventListener('click', () => {
+            let center = toWorld(canvas.width/2, canvas.height/2);
+            addShape(new Square(center.x, center.y));
+        });
+
+        document.getElementById('btn-circle').addEventListener('click', () => {
+            let center = toWorld(canvas.width/2, canvas.height/2);
+            addShape(new Circle(center.x, center.y));
+        });
+        
+        document.getElementById('btn-triangle').addEventListener('click', () => {
+            let center = toWorld(canvas.width/2, canvas.height/2);
+            let tri = new RightTriangle(center.x, center.y, 200, 150); 
+            tri.baseColor = '#0277BD';
+            tri.updateColor();
+            addShape(tri);
+        });
+
+        document.getElementById('btn-quad').addEventListener('click', () => {
+            let center = toWorld(canvas.width/2, canvas.height/2);
+            addShape(new Quadrilateral(center.x, center.y));
+        });
+        
+        document.getElementById('btn-flip-h').addEventListener('click', () => flipSelected('h'));
+        document.getElementById('btn-flip-v').addEventListener('click', () => flipSelected('v'));
+
+        document.getElementById('shape-color').addEventListener('input', (e) => {
+            let color = e.target.value;
+            selectedShapes.forEach(s => {
+                if (!s.isText) {
+                    s.baseColor = color;
+                    s.updateColor();
+                }
+            });
+            draw();
+        });
+
+        document.getElementById('shape-alpha').addEventListener('input', (e) => {
+            let alpha = parseFloat(e.target.value);
+            selectedShapes.forEach(s => {
+                if (!s.isText) {
+                    s.alpha = alpha;
+                    s.updateColor();
+                }
+            });
+            draw();
+        });
+
+        document.getElementById('text-color').addEventListener('input', (e) => {
+            let color = e.target.value;
+            selectedShapes.forEach(s => {
+                if (s.isText) {
+                    s.color = color;
+                }
+            });
+            draw();
+        });
+
+        document.getElementById('text-size').addEventListener('input', (e) => {
+            let size = parseInt(e.target.value);
+            selectedShapes.forEach(s => {
+                if (s.isText) {
+                    s.fontSize = size;
+                    s.updateBounds();
+                }
+            });
+            
+            if (activeTextBox && selectedShapes.includes(activeTextBox)) {
+                textInput.style.fontSize = (size * zoom) + 'px';
+                textInput.oninput();
+            }
+            
+            draw();
+        });
+
+        function setupInitialProofState() {
+            shapes = [];
+            history = [];
+            cameraX = 0; cameraY = 0; zoom = 1;
+            
+            let cx = canvas.width / 2;
+            let cy = canvas.height / 2;
+
+            const w = 240, h = 180;
+
+            let tri1 = new RightTriangle(cx - w/4, cy, w, h);
+            tri1.baseColor = '#0277BD';
+            tri1.updateColor();
+
+            let tri2 = new RightTriangle(cx + w/4, cy, w, h);
+            tri2.angle = 180;
+            tri2.baseColor = '#42A5F5';
+            tri2.updateColor();
+
+            let verts1 = tri1.getWorldVertices();
+            let circum1 = getCircumcircle(verts1[0], verts1[1], verts1[2]);
+            let circle1 = new Circle(circum1.x, circum1.y, circum1.radius);
+            circle1.baseColor = '#E57373';
+            circle1.updateColor();
+
+            let verts2 = tri2.getWorldVertices();
+            let circum2 = getCircumcircle(verts2[0], verts2[1], verts2[2]);
+            let circle2 = new Circle(circum2.x, circum2.y, circum2.radius);
+            circle2.baseColor = '#81C784';
+            circle2.updateColor();
+
+            shapes.push(circle1, circle2, tri1, tri2);
+            draw();
+        }
+
+        resizeCanvas();
+        setupInitialProofState();
+
+    </script>
+</body>
+</html>
